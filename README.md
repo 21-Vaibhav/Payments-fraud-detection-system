@@ -14,51 +14,55 @@ The platform decoupled into highly specialized microservices communicating async
 Architecture diagram:
 ```mermaid
 flowchart TD
-    User(("User (Load Tester)")) -->|HTTP POST| API["API Gateway (FastAPI)"]
-    
-    subgraph Kafka ["Event Bus (Apache Kafka)"]
-        K1[/"payments.initiated"/]
-        K2[/"payments.validated"/]
-        K3[/"payments.fraud_detected"/]
-        K4[/"payments.cdc"/]
+
+    User([User / Load Tester]) -->|HTTP POST| API[API Gateway FastAPI]
+
+    subgraph Kafka
+        K1[payments.initiated]
+        K2[payments.validated]
+        K3[payments.fraud_detected]
+        K4[payments.cdc]
     end
-    
+
     API -->|Produce Event| K1
-    
-    K1 -->|Consume| FraudProc["Fraud Detector (Stream Processor)"]
-    
-    subgraph Cache ["Distributed Cache"]
-        Redis[("Redis (Velocity Tracking)")]
+
+    K1 -->|Consume| FraudProc[Fraud Detector]
+
+    subgraph Cache
+        Redis[(Redis Cache)]
     end
-    
-    FraudProc <-->|Check 60s Sliding Window| Redis
-    
-    FraudProc -->|If Safe| K2
-    FraudProc -->|If Fraud| K3
-    
-    K2 -->|Consume| LedgerWorker["Ledger Worker (Orchestrator)"]
-    
-    LedgerWorker <-->|Exponential Backoff Retries| BankAPI(("External Bank API (Visa)"))
-    
-    subgraph Database ["Source of Truth"]
-        Postgres[("PostgreSQL (Ledger DB)")]
+
+    FraudProc -->|Velocity Check| Redis
+    Redis --> FraudProc
+
+    FraudProc -->|Safe Transaction| K2
+    FraudProc -->|Fraudulent Transaction| K3
+
+    K2 -->|Consume| LedgerWorker[Ledger Worker]
+
+    LedgerWorker -->|Bank API Calls| BankAPI[External Bank API]
+
+    subgraph Database
+        Postgres[(PostgreSQL Ledger DB)]
     end
-    
-    LedgerWorker -->|Write Final State and Idempotency Check| Postgres
-    
-    CDC["CDC Poller (Outbox Pattern)"] -->|Poll for new rows| Postgres
-    CDC -->|Produce Event| K4
-    
-    K4 -->|Consume| Downstream(("Downstream Services - Email or Analytics"))
-    
-    subgraph Observability ["Observability Stack"]
-        Prom{{"Prometheus (RED Metrics)"}}
-        Graf{{"Grafana (Dashboards)"}}
-        Prom -.->|Scrape Metrics| API
-        Prom -.->|Scrape Metrics| FraudProc
-        Prom -.->|Scrape Metrics| LedgerWorker
-        Graf -.->|Query| Prom
+
+    LedgerWorker -->|Write Ledger State| Postgres
+
+    CDC[CDC Poller] -->|Poll Changes| Postgres
+    CDC -->|Publish CDC Events| K4
+
+    K4 --> Downstream[Analytics / Email Services]
+
+    subgraph Observability
+        Prometheus[Prometheus]
+        Grafana[Grafana]
     end
+
+    Prometheus -.-> API
+    Prometheus -.-> FraudProc
+    Prometheus -.-> LedgerWorker
+
+    Grafana --> Prometheus
 ```
 
 
