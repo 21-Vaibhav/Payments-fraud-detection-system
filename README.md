@@ -12,6 +12,7 @@ The platform decoupled into highly specialized microservices communicating async
 4. **Data Integration (CDC Poller)**: Simulates a Debezium-style outbox pattern by polling the database for finalized state changes and broadcasting them downstream.
 
 Architecture diagram:
+```
 flowchart TD
     User(("User (Load Tester)")) -->|HTTP POST| API["API Gateway (FastAPI)"]
     
@@ -58,6 +59,7 @@ flowchart TD
         Prom -.->|Scrape Metrics| LedgerWorker
         Graf -.->|Query| Prom
     end
+```
 
 
 ## 🛠 Tech Stack
