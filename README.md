@@ -11,6 +11,55 @@ The platform decoupled into highly specialized microservices communicating async
 3. **Orchestrator (Ledger Worker)**: A Temporal-inspired worker that handles the "Saga". It manages simulated Bank API calls, exponential backoff retries, and strictly ordered writes to the PostgreSQL source-of-truth.
 4. **Data Integration (CDC Poller)**: Simulates a Debezium-style outbox pattern by polling the database for finalized state changes and broadcasting them downstream.
 
+Architecture diagram:
+flowchart TD
+    User(("User (Load Tester)")) -->|HTTP POST| API["API Gateway (FastAPI)"]
+    
+    subgraph Kafka ["Event Bus (Apache Kafka)"]
+        K1[/"payments.initiated"/]
+        K2[/"payments.validated"/]
+        K3[/"payments.fraud_detected"/]
+        K4[/"payments.cdc"/]
+    end
+    
+    API -->|Produce Event| K1
+    
+    K1 -->|Consume| FraudProc["Fraud Detector (Stream Processor)"]
+    
+    subgraph Cache ["Distributed Cache"]
+        Redis[("Redis (Velocity Tracking)")]
+    end
+    
+    FraudProc <-->|Check 60s Sliding Window| Redis
+    
+    FraudProc -->|If Safe| K2
+    FraudProc -->|If Fraud| K3
+    
+    K2 -->|Consume| LedgerWorker["Ledger Worker (Orchestrator)"]
+    
+    LedgerWorker <-->|Exponential Backoff Retries| BankAPI(("External Bank API (Visa)"))
+    
+    subgraph Database ["Source of Truth"]
+        Postgres[("PostgreSQL (Ledger DB)")]
+    end
+    
+    LedgerWorker -->|Write Final State and Idempotency Check| Postgres
+    
+    CDC["CDC Poller (Outbox Pattern)"] -->|Poll for new rows| Postgres
+    CDC -->|Produce Event| K4
+    
+    K4 -->|Consume| Downstream(("Downstream Services - Email or Analytics"))
+    
+    subgraph Observability ["Observability Stack"]
+        Prom{{"Prometheus (RED Metrics)"}}
+        Graf{{"Grafana (Dashboards)"}}
+        Prom -.->|Scrape Metrics| API
+        Prom -.->|Scrape Metrics| FraudProc
+        Prom -.->|Scrape Metrics| LedgerWorker
+        Graf -.->|Query| Prom
+    end
+
+
 ## 🛠 Tech Stack
 * **Language:** Python 3.10+
 * **Broker:** Apache Kafka & Zookeeper
