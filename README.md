@@ -83,12 +83,4 @@ python src/producer/load_test.py
 └── .github/workflows/      # CI/CD Pipeline
 ```
 
-## 💡 Interview Talking Points
-If discussing this project in a Systems Engineering interview, emphasize:
-- Why **Pull-based metrics** (Prometheus) are superior to push-based for high load.
-- Why **Horizontal Scaling** of Kafka consumers is strictly bound by partition counts.
-- How the **Outbox Pattern / CDC** prevents the dual-write problem.
-- How **Exponential Backoff with Jitter** prevents the thundering herd problem during API recovery.
 
----
-*Built as a portfolio project for Staff Middleware & Platform Engineering.*
