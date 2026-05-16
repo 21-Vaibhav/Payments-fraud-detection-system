@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: middleware-config
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  REDIS_HOST: "redis"
+  DB_HOST: "postgres"
+  # In a real environment, passwords would be in a K8s Secret, not a ConfigMap
+  POSTGRES_USER: "middleware_user"

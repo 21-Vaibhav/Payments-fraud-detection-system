@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'fastapi_producer'
+    static_configs:
+      - targets: ['host.docker.internal:8000'] # Assuming API runs locally on port 8000
+
+  - job_name: 'fraud_detector'
+    static_configs:
+      - targets: ['host.docker.internal:8001'] # We'll expose metrics for processor on 8001
+
+  - job_name: 'ledger_worker'
+    static_configs:
+      - targets: ['host.docker.internal:8002'] # We'll expose metrics for ledger worker on 8002

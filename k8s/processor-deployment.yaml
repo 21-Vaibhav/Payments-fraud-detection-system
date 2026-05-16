@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-processor
+spec:
+  replicas: 5 # Scale out consumers based on partition count!
+  selector:
+    matchLabels:
+      app: fraud-processor
+  template:
+    metadata:
+      labels:
+        app: fraud-processor
+    spec:
+      containers:
+      - name: processor
+        image: my-registry/fraud-processor:latest
+        ports:
+        - containerPort: 8001 # Prometheus metrics port
+        envFrom:
+        - configMapRef:
+            name: middleware-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"

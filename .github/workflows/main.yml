@@ -1,0 +1,96 @@
+name: Middleware CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  build-and-push:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push API Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/api.Dockerfile
+          push: true
+          tags: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}
+
+      - name: Build and Push Processor Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/processor.Dockerfile
+          push: true
+          tags: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}-processor:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Update K8s Manifests with new Image SHA
+        run: |
+          sed -i "s|image: my-registry/payment-api:latest|image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}|g" k8s/api-deployment.yaml
+          sed -i "s|image: my-registry/fraud-processor:latest|image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}-processor:${{ github.sha }}|g" k8s/processor-deployment.yaml
+
+      - name: Apply to Kubernetes
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+          
+      - name: Deploy to Cluster
+        run: |
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/api-deployment.yaml
+          kubectl apply -f k8s/processor-deployment.yaml
+          
+      - name: Verify Deployment Rollout
+        run: |
+          kubectl rollout status deployment/api-gateway --timeout=60s
+          kubectl rollout status deployment/fraud-processor --timeout=60s
