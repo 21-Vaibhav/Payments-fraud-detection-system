@@ -4,8 +4,6 @@ A distributed, event-driven middleware platform simulating enterprise-grade paym
 
 ## 🚀 Architecture Overview
 
-![Architecture Diagram](https://via.placeholder.com/800x400.png?text=Architecture+Diagram) *(Add an Excalidraw or Draw.io image here later!)*
-
 The platform decoupled into highly specialized microservices communicating asynchronously over Apache Kafka.
 
 1. **Ingestion API (FastAPI)**: Highly available gateway that accepts payment requests, validates schema, attaches idempotency keys, and instantly pushes to Kafka.
