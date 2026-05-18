@@ -25,5 +25,5 @@ if ($processes) {
     Write-Host " -> No running Python microservices found."
 }
 
-Write-Host "`nAll processes have been stopped successfully! 👋"
+Write-Host "`nAll processes have been stopped successfully!"
 Write-Host "=========================================================="

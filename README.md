@@ -85,39 +85,36 @@ flowchart TD
 
 ## 🏃‍♂️ How to Run Locally
 
-### 1. Start Infrastructure
-```bash
-docker-compose up -d
-```
-*(Wait 30-60s for Kafka, Postgres, Redis, Prometheus, and Grafana to initialize).*
-
-### 2. Install Dependencies
+### 1. Install Dependencies
+First, ensure your Python environment is set up:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Start Microservices (In separate terminals)
-```bash
-# Terminal 1: API Gateway
-uvicorn src.api.main:app --reload --port 8000
+### 2. Automated Startup (Windows / PowerShell)
+We have provided an automated startup script that boots the Docker infrastructure, waits for initialization, and spawns the Python microservices (FastAPI, stream processor, orchestrator, CDC, and load tester) in separate terminal windows for easy log monitoring.
 
-# Terminal 2: Stream Processor
-python -m src.processor.fraud_detector
-
-# Terminal 3: Orchestrator
-python -m src.orchestrator.ledger_worker
-
-# Terminal 4: CDC Worker
-python -m src.cdc.cdc_poller
+Simply run:
+```powershell
+.\startup.ps1
 ```
 
-### 4. Generate Load
-```bash
-# Terminal 5: Traffic Simulator
-python src/producer/load_test.py
+### 3. Automated Shutdown (Windows / PowerShell)
+To safely spin down the Docker infrastructure and kill the associated Python microservices, run:
+```powershell
+.\shutdown.ps1
 ```
+
+### Manual Startup (Linux / Mac / Alternative)
+If you prefer running services manually:
+1. `docker compose up -d`
+2. `uvicorn src.api.main:app --reload --port 8000`
+3. `python -m src.processor.fraud_detector`
+4. `python -m src.orchestrator.ledger_worker`
+5. `python -m src.cdc.cdc_poller`
+6. `python src/producer/load_test.py`
 
 ## 📊 Observability Dashboards
 * **Kafka UI:** [http://localhost:8090](http://localhost:8090)
