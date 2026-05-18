@@ -26,6 +26,10 @@ Start-Process -FilePath "python" -ArgumentList "-m", "src.processor.fraud_detect
 Write-Host " -> Starting Ledger Worker"
 Start-Process -FilePath "python" -ArgumentList "-m", "src.orchestrator.ledger_worker" -WindowStyle Normal
 
+# Start the Load Tester
+Write-Host " -> Starting Load Tester"
+Start-Process -FilePath "python" -ArgumentList "src/producer/load_test.py" -WindowStyle Normal
+
 Write-Host "`n[3/3] System is up and running!"
 Write-Host "=========================================================="
 Write-Host "IMPORTANT URLS AND PORTS"
