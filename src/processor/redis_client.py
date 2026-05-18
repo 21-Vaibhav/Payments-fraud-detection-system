@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import redis
 import os
 import logging
