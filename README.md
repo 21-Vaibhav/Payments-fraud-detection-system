@@ -11,6 +11,61 @@ The platform decoupled into highly specialized microservices communicating async
 3. **Orchestrator (Ledger Worker)**: A Temporal-inspired worker that handles the "Saga". It manages simulated Bank API calls, exponential backoff retries, and strictly ordered writes to the PostgreSQL source-of-truth.
 4. **Data Integration (CDC Poller)**: Simulates a Debezium-style outbox pattern by polling the database for finalized state changes and broadcasting them downstream.
 
+Architecture diagram:
+```mermaid
+flowchart TD
+
+    User([User / Load Tester]) -->|HTTP POST| API[API Gateway FastAPI]
+
+    subgraph Kafka
+        K1[payments.initiated]
+        K2[payments.validated]
+        K3[payments.fraud_detected]
+        K4[payments.cdc]
+    end
+
+    API -->|Produce Event| K1
+
+    K1 -->|Consume| FraudProc[Fraud Detector]
+
+    subgraph Cache
+        Redis[(Redis Cache)]
+    end
+
+    FraudProc -->|Velocity Check| Redis
+    Redis --> FraudProc
+
+    FraudProc -->|Safe Transaction| K2
+    FraudProc -->|Fraudulent Transaction| K3
+
+    K2 -->|Consume| LedgerWorker[Ledger Worker]
+
+    LedgerWorker -->|Bank API Calls| BankAPI[External Bank API]
+
+    subgraph Database
+        Postgres[(PostgreSQL Ledger DB)]
+    end
+
+    LedgerWorker -->|Write Ledger State| Postgres
+
+    CDC[CDC Poller] -->|Poll Changes| Postgres
+    CDC -->|Publish CDC Events| K4
+
+    K4 --> Downstream[Analytics / Email Services]
+
+    subgraph Observability
+        Prometheus[Prometheus]
+        Grafana[Grafana]
+    end
+
+    Prometheus -.-> API
+    Prometheus -.-> FraudProc
+    Prometheus -.-> LedgerWorker
+
+    Grafana --> Prometheus
+```
+
+
 ## 🛠 Tech Stack
 * **Language:** Python 3.10+
 * **Broker:** Apache Kafka & Zookeeper
