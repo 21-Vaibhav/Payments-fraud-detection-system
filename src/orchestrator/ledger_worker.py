@@ -59,8 +59,9 @@ def start_ledger_worker():
         'auto.offset.reset': 'earliest',
         'enable.auto.commit': False # Manual offset commits are mandatory for financial ledgers
     }
+    TOPIC_FRAUD = "payments.fraud_detected"
     consumer = Consumer(consumer_conf)
-    consumer.subscribe([TOPIC_VALIDATED])
+    consumer.subscribe([TOPIC_VALIDATED, TOPIC_FRAUD])
 
     # Start Prometheus Metrics Server
     start_http_server(8002)
@@ -77,9 +78,13 @@ def start_ledger_worker():
                 event = json.loads(msg.value().decode('utf-8'))
                 tx_id = event['transaction_id']
                 
-                # 1. Orchestrate the Bank Call
-                success = process_with_retry(event)
-                final_status = "COMPLETED" if success else "FAILED_BANK_REJECT"
+                # 1. Orchestrate the Bank Call (Skip if Fraud)
+                if msg.topic() == TOPIC_FRAUD:
+                    final_status = "FRAUD"
+                    logger.warning(f"🚫 Skipping bank call for fraudulent transaction {tx_id}")
+                else:
+                    success = process_with_retry(event)
+                    final_status = "COMPLETED" if success else "FAILED_BANK_REJECT"
 
                 # 2. Write to Source of Truth (Postgres Ledger)
                 with DB_WRITE_TIME.time():
