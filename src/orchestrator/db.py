@@ -18,6 +18,7 @@ class LedgerDB:
         create_table_query = """
         CREATE TABLE IF NOT EXISTS ledger (
             transaction_id VARCHAR(50) PRIMARY KEY,
+            seq_id BIGSERIAL UNIQUE,
             user_id VARCHAR(50) NOT NULL,
             merchant_id VARCHAR(50) NOT NULL,
             amount DECIMAL(10, 2) NOT NULL,
@@ -29,10 +30,15 @@ class LedgerDB:
         """
         # The idempotency_key UNIQUE constraint is our ultimate safeguard against double-charging.
         
+        alter_table_query = """
+        ALTER TABLE ledger ADD COLUMN IF NOT EXISTS seq_id BIGSERIAL UNIQUE;
+        """
+        
         try:
             with self.get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(create_table_query)
+                    cur.execute(alter_table_query)
                 conn.commit()
             logger.info("PostgreSQL ledger table initialized successfully.")
         except Exception as e:

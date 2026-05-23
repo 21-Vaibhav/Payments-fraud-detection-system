@@ -40,3 +40,19 @@ class RedisCache:
             # or "fail closed" (block it) to prioritize security. 
             # We will fail open here and assume 1 transaction.
             return 1
+
+    def check_and_set_idempotency(self, idempotency_key: str, ttl: int = 86400) -> bool:
+        """
+        Returns True if the key was successfully set (this is a NEW transaction).
+        Returns False if the key already exists (this is a DUPLICATE transaction).
+        ttl default is 24 hours (86400 seconds).
+        """
+        key = f"idempotency:{idempotency_key}"
+        try:
+            # SETNX (set if not exists). In redis-py, set(nx=True) does this atomically.
+            is_new = self.client.set(key, "1", nx=True, ex=ttl)
+            return bool(is_new)
+        except Exception as e:
+            logger.error(f"Redis error checking idempotency key {idempotency_key}: {e}")
+            # Fail open for availability
+            return True

@@ -35,26 +35,26 @@ class CDCPoller:
         })
         self.watermark = self._load_watermark()
 
-    def _load_watermark(self) -> str:
-        """Loads the last processed timestamp. If none, start from the beginning of time."""
+    def _load_watermark(self) -> int:
+        """Loads the last processed seq_id. If none, start from 0."""
         if os.path.exists(WATERMARK_FILE):
             with open(WATERMARK_FILE, "r") as f:
                 ts = f.read().strip()
-                if ts:
-                    return ts
-        return "1970-01-01 00:00:00"
+                if ts and ts.isdigit():
+                    return int(ts)
+        return 0
 
-    def _save_watermark(self, timestamp: datetime):
+    def _save_watermark(self, seq_id: int):
         """Saves the high-watermark so we don't process the same rows if we crash."""
         with open(WATERMARK_FILE, "w") as f:
-            f.write(str(timestamp))
+            f.write(str(seq_id))
 
     def poll_database(self):
         query = """
-            SELECT transaction_id, user_id, merchant_id, amount, currency, status, idempotency_key, created_at 
+            SELECT seq_id, transaction_id, user_id, merchant_id, amount, currency, status, idempotency_key, created_at 
             FROM ledger 
-            WHERE created_at > %s 
-            ORDER BY created_at ASC 
+            WHERE seq_id > %s 
+            ORDER BY seq_id ASC 
             LIMIT 100;
         """
         try:
@@ -78,7 +78,7 @@ class CDCPoller:
             if new_rows:
                 logger.info(f"CDC detected {len(new_rows)} new ledger entries.")
                 
-                last_ts = None
+                last_seq = None
                 for row in new_rows:
                     # Convert datetime to ISO string for JSON serialization
                     row['created_at'] = row['created_at'].isoformat()
@@ -93,15 +93,15 @@ class CDCPoller:
                         value=json.dumps(row).encode('utf-8'),
                         callback=_delivery_report
                     )
-                    last_ts = row['created_at']
+                    last_seq = row['seq_id']
 
                 # Wait for all messages in this batch to be delivered
                 self.producer.flush()
                 
                 # Update watermark ONLY AFTER successful Kafka delivery
-                if last_ts:
-                    self.watermark = last_ts
-                    self._save_watermark(last_ts)
+                if last_seq is not None:
+                    self.watermark = last_seq
+                    self._save_watermark(last_seq)
                     logger.info(f"Watermark advanced to {self.watermark}")
             
             # Polling interval. Real Debezium has near-zero latency because it's push-based.

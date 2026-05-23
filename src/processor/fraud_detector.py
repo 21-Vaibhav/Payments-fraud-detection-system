@@ -72,8 +72,16 @@ def start_stream_processor():
                 user_id = event['user_id']
                 amount = float(event['amount'])
                 transaction_id = event['transaction_id']
+                idempotency_key = event.get('idempotency_key', transaction_id)
                 
                 logger.info(f"Processing transaction {transaction_id} for {user_id}")
+
+                # --- IDEMPOTENCY CHECK ---
+                # This fixes the duplicate velocity inflation issue.
+                if not cache.check_and_set_idempotency(idempotency_key):
+                    logger.warning(f"🛡️ DUPLICATE DETECTED: {transaction_id} (key: {idempotency_key}) already processed. Skipping.")
+                    consumer.commit(message=msg)
+                    continue
 
                 is_fraud = False
                 fraud_reason = ""
