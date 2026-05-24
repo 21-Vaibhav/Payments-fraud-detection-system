@@ -1,8 +1,8 @@
 # Real-Time Payment Event Processing & Fraud Detection Middleware Platform
 
-A distributed, event-driven middleware platform simulating enterprise-grade payment processing systems (similar to Visa, Stripe, or PayPal). This project demonstrates advanced distributed systems concepts, stream processing, high availability, and platform engineering best practices.
+A distributed, event-driven middleware platform simulating enterprise-grade payment processing systems. This project demonstrates advanced distributed systems concepts, stream processing, high availability, and platform engineering best practices.
 
-## 🚀 Architecture Overview
+##  Architecture Overview
 
 The platform decoupled into highly specialized microservices communicating asynchronously over Apache Kafka.
 
@@ -66,7 +66,7 @@ flowchart TD
 ```
 
 
-## 🛠 Tech Stack
+##  Tech Stack
 * **Language:** Python 3.10+
 * **Broker:** Apache Kafka & Zookeeper
 * **Cache:** Redis (Stateful velocity checking)
@@ -75,7 +75,7 @@ flowchart TD
 * **Orchestration:** Docker Compose & Kubernetes (Manifests included)
 * **CI/CD:** GitHub Actions
 
-## 🧠 Core Distributed Systems Concepts Demonstrated
+##  Core Distributed Systems Concepts Demonstrated
 
 * **Idempotency & Exactly-Once Semantics**: Prevents double-charging users during network retries using database constraints and manual Kafka offset management (`enable.auto.commit=False`).
 * **Decoupling & Backpressure**: Using Kafka to buffer massive traffic spikes without crashing the downstream database.
@@ -83,7 +83,7 @@ flowchart TD
 * **Chaos Engineering Resilience**: The system can survive complete database outages, network partitions, and pod crashes without data loss.
 * **Observability**: Prometheus RED metrics (Rate, Errors, Duration) for deep visibility.
 
-## 🏃‍♂️ How to Run Locally
+##  How to Run Locally
 
 ### 1. Install Dependencies
 First, ensure your Python environment is set up:
@@ -116,12 +116,12 @@ If you prefer running services manually:
 5. `python -m src.cdc.cdc_poller`
 6. `python src/producer/load_test.py`
 
-## 📊 Observability Dashboards
+##  Observability Dashboards
 * **Kafka UI:** [http://localhost:8090](http://localhost:8090)
 * **Prometheus:** [http://localhost:9090](http://localhost:9090)
 * **Grafana:** [http://localhost:3000](http://localhost:3000)
 
-## 📁 Project Structure
+## Project Structure
 ```text
 ├── k8s/                    # Kubernetes declarative manifests
 ├── config/                 # Prometheus configurations
